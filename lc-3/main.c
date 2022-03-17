@@ -4,7 +4,7 @@
 #include <string.h>
 #include <signal.h>
 
-/* unix */
+/* *nix */
 #include <unistd.h>
 #include <fcntl.h>
 
@@ -13,66 +13,78 @@
 #include <sys/termios.h>
 #include <sys/mman.h>
 
-//MAIN MEMORY
-//65,536 memory locations
-uint16_t memory[UINT16_MAX];	//Ensure that the array length is the maximum representable value of 16-bit integer.
+/* Architecture definitions */
+#include "./include/main_memory.h"
+#include "./include/registers.h"
+#include "./include/opcodes.h"
+#include "./include/condition_flags.h"
 
-//REGISTERS	
-//10 16-bit Registers
-//8 General purpose registers 	(R0-R7)
-//1 Program Counter register 	(PC)
-//1 Condition Flag register 	(COND)
-enum
+/* Utility functions */
+#include "./include/utilities/usage.c"
+#include "./include/utilities/switch_endian.c"
+#include "./include/utilities/read_image_file.c"
+
+uint16_t check_key()
 {
-	R_R0 = 0,
-	R_R1,
-	R_R2,
-	R_R3,
-	R_R4,
-	R_R5,
-	R_R6,
-	R_R7,
-	R_PC,		//Program counter
-	R_COND,		//Stores flags providing information about the most recently executed calculation. Allows programs to check logical conditions
-	R_COUNT 	//Total registers
-};
+    fd_set readfds;
+    FD_ZERO(&readfds);
+    FD_SET(STDIN_FILENO, &readfds);
 
-uint16_t registers[R_COUNT];
+    struct timeval timeout;
+    timeout.tv_sec = 0;
+    timeout.tv_usec = 0;
+    return select(1, &readfds, NULL, NULL, &timeout) != 0;
+}
 
-//OPCODES
-//16 opcodes in lc-3
-enum
+//Set up terminal input
+struct termios original_tio;
+
+void disable_input_buffering()
 {
-	OP_BR = 0,	//branch
-	OP_ADD,		//add
-	OP_LD,		//load
-	OP_ST,		//store
-	OP_JSR,		//jump register
-	OP_AND,		//bitwise and
-	OP_LDR,		//load register
-	OP_STR,		//store register
-	OP_RTI,		//unused
-	OP_NOT,		//bitwise not
-	OP_LDI,		//load indirect
-	OP_STI,		//store indirect
-	OP_JMP,		//jump
-	OP_RES,		//reserved (unused)
-	OP_LEA,		//load effective address
-	OP_TRAP		//execute trap
-};
+    tcgetattr(STDIN_FILENO, &original_tio);
+    struct termios new_tio = original_tio;
+    new_tio.c_lflag &= ~ICANON & ~ECHO;
+    tcsetattr(STDIN_FILENO, TCSANOW, &new_tio);
+}
 
-
-//CONDITION FLAGS
-//3 condition flags
-enum
+void restore_input_buffering()
 {
-	FL_POS = 1 << 0,	//positive 	1	0000 0001
-	FL_ZER = 1 << 1,	//zero		2	0000 0010
-	FL_NEG = 1 << 2		//Negative	4	0000 0100
-};		
+    tcsetattr(STDIN_FILENO, TCSANOW, &original_tio);
+}
+
+//Interrupt handling
+void handle_interrupt(int signal)
+{
+    restore_input_buffering();
+    printf("\n");
+    exit(-2);
+}
+
 
 int main(int argc, char * argv[])
 {
-	
+	signal(SIGINT, handle_interrupt);
+	disable_input_buffering();
+	//Check that there is at least one argument
+	if(argc < 2)
+	{
+		usage(argc);	
+	}		
+
+	for( int i = 1; i < argc; ++i )
+	{
+		if( !read_image(argv[i]) )
+		{
+			printf("Failed to load image: %s\n", argv[i]);
+			restore_input_buffering();
+			exit(1);
+		}	
+	}
+
+	/* Exactly one condition flag should be set at any given time */
+	registers[R_COND] = FL_ZERO;
+
+
+	restore_input_buffering();
 	return 0;
 }
