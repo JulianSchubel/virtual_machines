@@ -69,7 +69,8 @@ void update_condition_flags(uint16_t r)
 	{
 		registers[R_COND] = FL_ZRO;
 	}
-	else if (registers[r] >> 15) /* if sign bit is 1  */
+	/* if sign bit is 1  */
+	else if (registers[r] >> 15) 
 	{
 		registers[R_COND] = FL_NEG;
 	}
@@ -82,7 +83,7 @@ void update_condition_flags(uint16_t r)
 /* 
 		Provide sign extension:
  
-		Used to increase the number of bits in a numbers reprentation while retaining the sign and value.
+		Used to increase the number of bits in a positional number reprentation while retaining the sign and value.
 		If the number is positive padded with 0's, i.e. functionally, do nothing.
 		If the number is negative padded with 1's, assuming two's complement.
 */
@@ -119,15 +120,17 @@ int main(int argc, char** argv)
 {
 	/* check if there are at least two command line arguments  */
 	if(argc < 2)
-	{
-		usage(argc);	/* see include/utilities/usage.c  */
+	{	
+		/* see include/utilities/usage.c  */
+		usage(argc);
 	}		
 	/* read in the start of the image  */
 	else
 	{
 		for( int i = 1; i < argc; ++i )
 		{
-			if( !read_image(argv[i]) )	/* see include/utilities/read_image.c  */
+			/* see include/utilities/read_image.c  */
+			if( !read_image(argv[i]) )	
 			{
 				printf("Failed to load image: %s\n", argv[i]);
 				exit(1);
@@ -158,21 +161,21 @@ int main(int argc, char** argv)
 		/*  Identify the opcode and determine instruction operator and operands.
 
 			Instruction have both an opcode and parameters: 
-				OPCODE:     Type of operation to be performed.
-				PARAMATERS: Inputs to the operation.
+			OPCODE: Type of operation to be performed.
+			PARAMATERS: Inputs to the operation.
 			
 			Instructions are 16-bits wide:
-				Bits [15:12] (leftmost bits):			store the opcode.
-				Bits [11:9]:  							store DR (Destination Register).
-				Bits [8:6]:								store SR1 (Source Register 1).	 
-				Bits [5]:								Mode flag (1 immediate mode, 0 register mode).
+			Bits [15:12] (leftmost bits): store the opcode.
+			Bits [11:9]: store DR (Destination Register).
+			Bits [8:6]:	store SR1 (Source Register 1).	 
+			Bits [5]: Mode flag (1 immediate mode, 0 register mode).
 			
-				If register mode:
-					Bits [4:3]:							Unused.
-					Bits [2:0]:							store SR2 (Source Register 2).
+			If register mode:
+			Bits [4:3]: Unused.
+			Bits [2:0]:	store SR2 (Source Register 2).
 				
-				If immediate mode:
-					Bits [4:0]:							imm5 field (5 bit value to be sign extended).
+			If immediate mode:
+			Bits [4:0]: imm5 field (5 bit value to be sign extended).
 		*/
 
 		switch(opcode)
