@@ -81,11 +81,11 @@ void update_condition_flags(uint16_t r)
 }
 
 /* 
-		Provide sign extension:
- 
-		Used to increase the number of bits in a positional number reprentation while retaining the sign and value.
-		If the number is positive padded with 0's, i.e. functionally, do nothing.
-		If the number is negative padded with 1's, assuming two's complement.
+	Provide sign extension:
+
+	Used to increase the number of bits in a positional number reprentation while retaining the sign and value.
+	If the number is positive padded with 0's, i.e. functionally, do nothing.
+	If the number is negative padded with 1's, assuming two's complement.
 */
 uint16_t sign_extension(uint16_t x, int bit_count)
 {
@@ -206,7 +206,43 @@ int main(int argc, char** argv)
 					update_condition_flags(r0);
 				}
 				break;
+
 			case OP_AND:
+				/* 
+					Bits [15:12]: opcode
+					Bits [11:9]: Destination Register
+					Bits [8:6]:	Source Register 1
+					Bits [5]: Mode flag.
+					
+					If register mode:
+					Bits [4:3]: Unused
+					Bits [2:0]: Source Register 2
+
+					If immediate mode:
+					Bits [4:0]: imm5 field.
+
+					r0 = DR 
+					r1 = SR1
+					r2 = SR2
+				*/
+				{
+                    uint16_t r0 = instruction >> 9 & 0x7;
+                    uint16_t r1 = instruction >> 6 & 0x7;
+                    uint16_t imm_flag = instruction >> 5 & 0x1;
+
+                    if( imm_flag )
+                    {
+                        uint16_t imm5 = sign_extension(instruction & 0x1F, 5);
+						registers[r0] = registers[r1] & imm5;
+					}
+					else
+					{
+						uint16_t r2 = instruction & 0x7;
+						registers[r0] = registers[r1] &  registers[r2];
+					}
+
+					update_condition_flags(r0);
+				}
 				break;
 			case OP_NOT:
 				break;
@@ -241,6 +277,7 @@ int main(int argc, char** argv)
 				break;
 		}
 	}
+
 	/* shutdown */
 	return 0;
 }
