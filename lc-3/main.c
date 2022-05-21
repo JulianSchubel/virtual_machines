@@ -160,7 +160,8 @@ int main(int argc, char** argv)
 
 		/*  Identify the opcode and determine instruction operator and operands.
 
-			Instruction have both an opcode and parameters: 
+			Instructions are 16-bits wide.
+			Instruction have both an opcode and parameters.
 			OPCODE: Type of operation to be performed.
 			PARAMATERS: Inputs to the operation.
 		*/
@@ -170,7 +171,6 @@ int main(int argc, char** argv)
 			case OP_ADD:
 				{
 					/* 
-						Instructions are 16-bits wide:
 						Bits [15:12]: (leftmost bits): store the opcode.
 						Bits [11:9]: store DR (Destination Register).
 						Bits [8:6]:	store SR1 (Source Register 1).	 
