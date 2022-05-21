@@ -286,8 +286,8 @@ int main(int argc, char** argv)
 					uint16_t PCoffset9 = sign_extension(instruction & 0x1FF, 9);
 
 					/* 
-						Handle the condition flags as a unit and & with registers[R_COND]. 
 						Condition is any flag set with no specific individual flag behaviour.
+						Handle the condition flags as a unit and & with registers[R_COND]. 
 					*/	
 					uint16_t condition_flags = (instruction >> 9) & 0x7;	
 					
