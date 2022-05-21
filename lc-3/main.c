@@ -67,7 +67,7 @@ void update_condition_flags(uint16_t r)
 {
 	if(registers[r] == 0)
 	{
-		registers[R_COND] = FL_ZRO;
+		registers[R_COND] = FL_ZER;
 	}
 	/* if sign bit is 1  */
 	else if (registers[r] >> 15) 
@@ -171,16 +171,18 @@ int main(int argc, char** argv)
 			case OP_ADD:
 				{
 					/* 
+						Opcode: 0001
+
 						Bits [15:12]: (leftmost bits): store the opcode.
 						Bits [11:9]: store DR (Destination Register).
 						Bits [8:6]:	store SR1 (Source Register 1).	 
 						Bits [5]: Mode flag (1 immediate mode, 0 register mode).
 						
-						If register mode:
+						If register mode (bit 5 = 0):
 						Bits [4:3]: Unused.
 						Bits [2:0]:	store SR2 (Source Register 2).
 							
-						If immediate mode:
+						If immediate mode (bit 5 = 1):
 						Bits [4:0]: imm5 field (5 bit value to be sign extended).
 
 						r0 = DR 
@@ -188,9 +190,9 @@ int main(int argc, char** argv)
 						r2 = SR2
 					*/
 
-					uint16_t r0 = instruction >> 9 & 0x7; 
-					uint16_t r1 = instruction >> 6 & 0x7;
-					uint16_t imm_flag = instruction >> 5 & 0x1;  
+					uint16_t r0 = (instruction >> 9) & 0x7; 
+					uint16_t r1 = (instruction >> 6) & 0x7;
+					uint16_t imm_flag = (instruction >> 5) & 0x1;  
 
 					if( imm_flag ) 
 					{
@@ -209,16 +211,18 @@ int main(int argc, char** argv)
 
 			case OP_AND:
 				/* 
+					Opcode: 0101
+
 					Bits [15:12]: opcode
 					Bits [11:9]: Destination Register
 					Bits [8:6]:	Source Register 1
 					Bits [5]: Mode flag.
 					
-					If register mode:
+					If register mode (bit 5 = 0):
 					Bits [4:3]: Unused
 					Bits [2:0]: Source Register 2
 
-					If immediate mode:
+					If immediate mode (bit 5 = 1):
 					Bits [4:0]: imm5 field.
 
 					r0 = DR 
@@ -226,9 +230,9 @@ int main(int argc, char** argv)
 					r2 = SR2
 				*/
 				{
-                    uint16_t r0 = instruction >> 9 & 0x7;
-                    uint16_t r1 = instruction >> 6 & 0x7;
-                    uint16_t imm_flag = instruction >> 5 & 0x1;
+                    uint16_t r0 = (instruction >> 9) & 0x7;
+                    uint16_t r1 = (instruction >> 6) & 0x7;
+                    uint16_t imm_flag = (instruction >> 5) & 0x1;
 
                     if( imm_flag )
                     {
@@ -238,15 +242,60 @@ int main(int argc, char** argv)
 					else
 					{
 						uint16_t r2 = instruction & 0x7;
-						registers[r0] = registers[r1] &  registers[r2];
+						registers[r0] = registers[r1] & registers[r2];
 					}
 
 					update_condition_flags(r0);
 				}
 				break;
 			case OP_NOT:
+				/*
+					Opcode: 1001
+
+					[15:12]: opcode
+					[11:9]: Destination register
+					[8:6]: Source Register
+					[5:0]: Unused
+				
+					r0 = DR
+					r1 = SR
+				*/
+				{
+					uint16_t r0 = (instruction >> 9) & 0x7;
+					uint16_t r1 = (instruction >> 6) & 0x7;
+
+					registers[r0] = ~registers[r1];
+					update_condition_flags(r0);
+				}
 				break;
 			case OP_BR:
+				/* 
+					Opcode: 0000  
+					
+					[15:12]: opcode
+					[11]: negative condition code flag
+					[10]: zero condition code flag
+					[9]: positive condition code flag
+					[8:0]: 9 bit PC offset
+
+					FL_POS: 0001
+					FL_ZER: 0010
+					FL_NEG: 0100
+				*/
+				{
+					uint16_t PCoffset9 = sign_extension(instruction & 0x1FF, 9);
+
+					/* 
+						Handle the condition flags as a unit and & with registers[R_COND]. 
+						Condition is any flag set with no specific individual flag behaviour.
+					*/	
+					uint16_t condition_flags = (instruction >> 9) & 0x7;	
+					
+					if(condition_flags & registers[R_COND])
+					{
+						registers[PC] += PCoffset9; 
+					}
+				}
 				break;
 			case OP_JMP:
 				break;
