@@ -1,8 +1,13 @@
 #ifndef LC3_CONDITION_FLAGS_H
 #define LC3_CONDITION_FLAGS_H
 
-//CONDITION FLAGS
-//3 condition flags
+/*
+	CONDITION FLAGS
+	Stored in the R_COND register.
+	Provide information about the most recently executed calculation.
+	Exactly one conditition flag must be set at any given time.
+*/
+
 enum
 {
 	FL_POS = 1 << 0,	//positive 	1	0000 0001
