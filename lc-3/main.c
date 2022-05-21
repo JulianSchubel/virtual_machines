@@ -163,19 +163,6 @@ int main(int argc, char** argv)
 			Instruction have both an opcode and parameters: 
 			OPCODE: Type of operation to be performed.
 			PARAMATERS: Inputs to the operation.
-			
-			Instructions are 16-bits wide:
-			Bits [15:12] (leftmost bits): store the opcode.
-			Bits [11:9]: store DR (Destination Register).
-			Bits [8:6]:	store SR1 (Source Register 1).	 
-			Bits [5]: Mode flag (1 immediate mode, 0 register mode).
-			
-			If register mode:
-			Bits [4:3]: Unused.
-			Bits [2:0]:	store SR2 (Source Register 2).
-				
-			If immediate mode:
-			Bits [4:0]: imm5 field (5 bit value to be sign extended).
 		*/
 
 		switch(opcode)
@@ -183,6 +170,19 @@ int main(int argc, char** argv)
 			case OP_ADD:
 				{
 					/* 
+						Instructions are 16-bits wide:
+						Bits [15:12]: (leftmost bits): store the opcode.
+						Bits [11:9]: store DR (Destination Register).
+						Bits [8:6]:	store SR1 (Source Register 1).	 
+						Bits [5]: Mode flag (1 immediate mode, 0 register mode).
+						
+						If register mode:
+						Bits [4:3]: Unused.
+						Bits [2:0]:	store SR2 (Source Register 2).
+							
+						If immediate mode:
+						Bits [4:0]: imm5 field (5 bit value to be sign extended).
+
 						r0 = DR 
 						r1 = SR1
 						r2 = SR2
