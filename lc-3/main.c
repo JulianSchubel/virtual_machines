@@ -15,6 +15,7 @@
 
 /* Architecture definitions */
 #include "./include/main_memory.h"
+#include "./include/memory_mapped_registers.h"
 #include "./include/registers.h"
 #include "./include/opcodes.h"
 #include "./include/condition_flags.h"
@@ -23,21 +24,26 @@
 #include "./include/utilities/usage.c"
 #include "./include/utilities/switch_endian.c"
 #include "./include/utilities/read_image_file.c"
+#include "./include/utilities/memory_access.h"
 
 #define PROGRAM_START 0x3000
 
 uint16_t check_key()
 {
-    /* Create a file descriptor set */
+    /* Structure type representing a file descriptor set for select() */
+    /* readfds is the set of file descriptors to be tested to determine if input is possible */
     fd_set readfds;
-    /* Initialize the set to zero  */
+    /* Initialize the file descriptor set to zero  */
     FD_ZERO(&readfds);
 
+    /* Adds STDIN_FILNO file descriptor to the readfds file descriptor set */
     FD_SET(STDIN_FILENO, &readfds);
 
     struct timeval timeout;
     timeout.tv_sec = 0;
     timeout.tv_usec = 0;
+    /* select(): blocks until one or more of a set of file descriptors becomes ready */
+    /* A file descriptor is considered ready if it is possible to perform a corresponding I/O operation */
     return select(1, &readfds, NULL, NULL, &timeout) != 0;
 }
 
