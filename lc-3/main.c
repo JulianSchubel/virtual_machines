@@ -28,8 +28,11 @@
 
 uint16_t check_key()
 {
+    /* Create a file descriptor set */
     fd_set readfds;
+    /* Initialize the set to zero  */
     FD_ZERO(&readfds);
+
     FD_SET(STDIN_FILENO, &readfds);
 
     struct timeval timeout;
@@ -93,7 +96,7 @@ uint16_t sign_extension(uint16_t x, int bit_count)
 	if( (x >> (bit_count-1)) & 1 )
 	{
 		/* 
-			Set the bits of x in a 16 bit, two's complement representation
+			Set the bits of x as a 16 bit two's complement representation
 			Each nibble 0xF is 1111
 			0xFFFF is 1111 1111 1111 1111
 		*/
@@ -138,38 +141,38 @@ int main(int argc, char** argv)
 		}	
 	}
 
-	/* Exactly one condition flag must be set */
+	/* Exactly one condition flag must be set at all times */
 	registers[R_COND] = FL_ZER;	
 
 	/* Instructions start at 0x3000 */
-	/* Load the address of the first instruction to the program counter */
+	/* Set the program counter to starting position by loading the address of the first instruction into the program counter */
 	registers[R_PC] = PROGRAM_START;
 
 	/* Sentinel value for the loop */
 	int running = 1;
-	/*   */	
+
 	while(running) 
 	{
-		/* Fetch the first instruction */		
+		/* Fetch */		
 		uint16_t instruction = mem_read(registers[R_PC]++);
 
-		/* Right shift to isolate the opcode */
+        /* Decode */
+		/* Right shift to isolate the opcode; opcode is leftmost 4 bits */
 		uint16_t opcode = instruction >> 12;
 
-
-
 		/*  Identify the opcode and determine instruction operator and operands.
-
-			Instructions are 16-bits wide.
-			Instruction have both an opcode and parameters.
-			OPCODE: Type of operation to be performed.
-			PARAMATERS: Inputs to the operation.
+			 - Instructions are 16-bits wide.
+			 - Instruction have both an opcode and parameters.
+			 - OPCODE: Type of operation to be performed.
+			 - PARAMATERS: Inputs to the operation.
 		*/
-
 		switch(opcode)
 		{
+            /* Execute */
+            /* Register bit mask: 111 or 0x7 */
 			case OP_ADD:
 				{
+                    /* Mode flag: Memory addressing mode */
 					/* 
 						Opcode: 0001
 
@@ -190,8 +193,11 @@ int main(int argc, char** argv)
 						r2 = SR2
 					*/
 
+                    /* Isolate destination register */
 					uint16_t r0 = (instruction >> 9) & 0x7; 
+                    /* Isolate source register 1 */
 					uint16_t r1 = (instruction >> 6) & 0x7;
+                    /* Isolate the memory addressing mode */
 					uint16_t imm_flag = (instruction >> 5) & 0x1;  
 
 					if( imm_flag ) 
@@ -201,6 +207,7 @@ int main(int argc, char** argv)
 					}
 					else
 					{
+                        /* Isolate source register 2 */
 						uint16_t r2 = instruction & 0x7;
 						registers[r0] = registers[r1] + registers[r2];	
 					}
@@ -293,13 +300,39 @@ int main(int argc, char** argv)
 					
 					if(condition_flags & registers[R_COND])
 					{
-						registers[PC] += PCoffset9; 
+						registers[R_PC] += PCoffset9; 
 					}
 				}
 				break;
 			case OP_JMP:
+                /*  
+                    Unconditionally jump to the location specified by the base register
+                    Also handles "return" (when PC is loaded with value from R7. That is, when r0 is 111)
+                    Opcode: 1100
+
+                    [15:12]: opcode
+                    [11:9]: unused
+                    [8:6]: Base Register 
+                    [5:0]: unused
+                */
+                uint16_t r0 = (instruction >> 6) & 0x7;
+                registers[R_PC] = registers[r0];
 				break;
 			case OP_JSR:
+                /*  
+                    Jump to Subroutine 
+                    Opcode: 0100
+                    
+                    [15:12]: opcode
+                    [11]: subroutine address location flag
+                    [10:0]: 11 PC offset
+                */
+                /* Save incremented program counter in R7: This is the linkage back to the calling routine */
+                registers[R_R7] = registers[R_PC];
+                uint16_t offset_flag = (instruction >> 11) & 1;
+                if(offset_flag) {
+                   
+                }
 				break;
 			case OP_LD:
 				break;
