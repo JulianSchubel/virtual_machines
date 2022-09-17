@@ -4,7 +4,7 @@
 #include <string.h>
 #include <signal.h>
 
-/* *nix headers */
+/* nix headers */
 #include <unistd.h>
 #include <fcntl.h>
 
@@ -24,28 +24,10 @@
 #include "./include/utilities/usage.c"
 #include "./include/utilities/switch_endian.c"
 #include "./include/utilities/read_image_file.c"
+#include "./include/utilities/check_key.h"
 #include "./include/utilities/memory_access.h"
 
 #define PROGRAM_START 0x3000
-
-uint16_t check_key()
-{
-    /* Structure type representing a file descriptor set for select() */
-    /* readfds is the set of file descriptors to be tested to determine if input is possible */
-    fd_set readfds;
-    /* Initialize the file descriptor set to zero  */
-    FD_ZERO(&readfds);
-
-    /* Adds STDIN_FILNO file descriptor to the readfds file descriptor set */
-    FD_SET(STDIN_FILENO, &readfds);
-
-    struct timeval timeout;
-    timeout.tv_sec = 0;
-    timeout.tv_usec = 0;
-    /* select(): blocks until one or more of a set of file descriptors becomes ready */
-    /* A file descriptor is considered ready if it is possible to perform a corresponding I/O operation */
-    return select(1, &readfds, NULL, NULL, &timeout) != 0;
-}
 
 //Set up terminal input
 struct termios original_tio;
@@ -58,12 +40,13 @@ void disable_input_buffering()
     tcsetattr(STDIN_FILENO, TCSANOW, &new_tio);
 }
 
+/* Restore terminal settings */
 void restore_input_buffering()
 {
     tcsetattr(STDIN_FILENO, TCSANOW, &original_tio);
 }
 
-//Interrupt handling
+//Interrupt handling: Call restore_input_buffering on interrupt
 void handle_interrupt(int signal)
 {
     restore_input_buffering();
@@ -114,22 +97,10 @@ uint16_t sign_extension(uint16_t x, int bit_count)
     return x;
 }
 
-/*int main(int argc, char * argv[])
+int main(int argc, char** argv)
 {
     signal(SIGINT, handle_interrupt);
     disable_input_buffering();
-    //Check that there is at least one argument
-    //Exactly one condition flag should be set at any given time
-    registers[R_COND] = FL_ZERO;
-
-
-    restore_input_buffering();
-    return 0;
-}
-*/
-
-int main(int argc, char** argv)
-{
     /* check if there are at least two command line arguments  */
     if(argc < 2)
     {    
@@ -163,7 +134,7 @@ int main(int argc, char** argv)
     while(running) 
     {
         /* Fetch */        
-        uint16_t instruction = mem_read(registers[R_PC]++);
+        uint16_t instruction = memory_read(registers[R_PC]++);
 
         /* Decode */
         /* Right shift to isolate the opcode; opcode is leftmost 4 bits */
@@ -264,6 +235,7 @@ int main(int argc, char** argv)
                     update_condition_flags(r0);
                 }
                 break;
+
             case OP_NOT:
                 /*
                     Opcode: 1001
@@ -284,6 +256,7 @@ int main(int argc, char** argv)
                     update_condition_flags(r0);
                 }
                 break;
+
             case OP_BR:
                 /* 
                     Opcode: 0000  
@@ -313,6 +286,7 @@ int main(int argc, char** argv)
                     }
                 }
                 break;
+                
             case OP_JMP:
                 /*  
                     Unconditionally jump to the location specified by the base register
@@ -324,9 +298,12 @@ int main(int argc, char** argv)
                     [8:6]: Base Register 
                     [5:0]: unused
                 */
-                uint16_t r0 = (instruction >> 6) & 0x7;
-                registers[R_PC] = registers[r0];
+                {
+                    uint16_t r0 = (instruction >> 6) & 0x7;
+                    registers[R_PC] = registers[r0];
+                }
                 break;
+
             case OP_JSR:
                 /*  
                     Jump to Subroutine (JSR and JSRR)
@@ -336,22 +313,25 @@ int main(int argc, char** argv)
                     [11]: subroutine address location flag
                     [10:0]: 11 PC offset
                 */
-                /* Save incremented program counter in R7: This is the linkage back to the calling routine */
-                registers[R_R7] = registers[R_PC];
-                uint16_t offset_flag = (instruction >> 11) & 1;
-                if(offset_flag) {
-                    /* JSR: Subroutine address obtained from sign extending bits [10:0] and adding the value to PC */
-                    /* Isolate 11 bit PC offset by bitwise AND using bit mask 0000 0111 1111 1111 or 0x7FF*/
-                    uint16_t sign_extended_pc_offset_11 = sign_extension(instruction & 0x7FF, 11);
-                    /* Add the sign extend PC offset to PC */
-                    registers[R_PC] += sign_extended_pc_offset_11;
-                }
-                else {
-                    /* JSRR: Subroutine address is obtained from the base register. Bits [8:6] */
-                    uint16_t r0 = (instruction >> 6) & 0x7
-                    registers[R_PC] = registers[r0];
+                {
+                    /* Save incremented program counter in R7: This is the linkage back to the calling routine */
+                    registers[R_R7] = registers[R_PC];
+                    uint16_t offset_flag = (instruction >> 11) & 1;
+                    if(offset_flag) {
+                        /* JSR: Subroutine address obtained from sign extending bits [10:0] and adding the value to PC */
+                        /* Isolate 11 bit PC offset by bitwise AND using bit mask 0000 0111 1111 1111 or 0x7FF*/
+                        uint16_t sign_extended_pc_offset_11 = sign_extension(instruction & 0x7FF, 11);
+                        /* Add the sign extend PC offset to PC */
+                        registers[R_PC] += sign_extended_pc_offset_11;
+                    }
+                    else {
+                        /* JSRR: Subroutine address is obtained from the base register. Bits [8:6] */
+                        uint16_t r0 = (instruction >> 6) & 0x7;
+                        registers[R_PC] = registers[r0];
+                    }
                 }
                 break;
+
             case OP_LD:
                 /*  
                     Load 
@@ -363,13 +343,16 @@ int main(int argc, char** argv)
                     [11:9]: Destination register
                     [8:0]: 9 bit PC offset
                 */
-                /* Retrieve the destination register */
-                uint16_t r0 = (instruction >> 9) & 0x7;
-                /* Isolate the 9 bit PC offset by bitwise AND using bit mask 0000 0001 1111 1111 or 0x1FF*/
-                uint16_t sign_extended_pc_offset_9 = sign_extension(instruction & 0x1FF, 9);
-                registers[r0] = mem_read(registers[R_PC] + sign_extended_pc_offset_9);
-                update_condition_flags(r0);
+                {
+                    /* Retrieve the destination register */
+                    uint16_t r0 = (instruction >> 9) & 0x7;
+                    /* Isolate the 9 bit PC offset by bitwise AND using bit mask 0000 0001 1111 1111 or 0x1FF*/
+                    uint16_t sign_extended_pc_offset_9 = sign_extension(instruction & 0x1FF, 9);
+                    registers[r0] = memory_read(registers[R_PC] + sign_extended_pc_offset_9);
+                    update_condition_flags(r0);
+                }
                 break;
+
             case OP_LDI:
                 break;
             case OP_LDR:
@@ -395,5 +378,6 @@ int main(int argc, char** argv)
     }
 
     /* shutdown */
+    restore_input_buffering();
     return 0;
 }

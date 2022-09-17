@@ -7,8 +7,7 @@
 //1 Program Counter register 	(PC)
 //1 Condition Flag register 	(COND)
 
-enum 
-{
+enum {
 	R_R0 = 0,
 	R_R1,
 	R_R2,
