@@ -89,7 +89,10 @@ void update_condition_flags(uint16_t r)
     Used to increase the number of bits in a positional number reprentation while retaining the sign and value.
     If the number is positive padded with 0's, i.e. functionally, do nothing.
     If the number is negative padded with 1's, assuming two's complement.
+
+    sign_extension: x is the value to be extended, bit_count is the number of bits in the value
 */
+
 uint16_t sign_extension(uint16_t x, int bit_count)
 {
     /* if the sign bit is negative  */
@@ -290,7 +293,7 @@ int main(int argc, char** argv)
                     FL_NEG: 0100
                 */
                 {
-                    uint16_t PCoffset9 = sign_extension(instruction & 0x1FF, 9);
+                    uint16_t pc_offset_9 = sign_extension(instruction & 0x1FF, 9);
 
                     /* 
                         Condition is any flag set with no specific individual flag behaviour.
@@ -300,7 +303,7 @@ int main(int argc, char** argv)
                     
                     if(condition_flags & registers[R_COND])
                     {
-                        registers[R_PC] += PCoffset9; 
+                        registers[R_PC] += pc_offset_9; 
                     }
                 }
                 break;
@@ -320,7 +323,7 @@ int main(int argc, char** argv)
                 break;
             case OP_JSR:
                 /*  
-                    Jump to Subroutine 
+                    Jump to Subroutine (JSR and JSRR)
                     Opcode: 0100
                     
                     [15:12]: opcode
@@ -331,10 +334,35 @@ int main(int argc, char** argv)
                 registers[R_R7] = registers[R_PC];
                 uint16_t offset_flag = (instruction >> 11) & 1;
                 if(offset_flag) {
-                   
+                    /* JSR: Subroutine address obtained from sign extending bits [10:0] and adding the value to PC */
+                    /* Isolate 11 bit PC offset by bitwise AND using bit mask 0000 0111 1111 1111 or 0x7FF*/
+                    uint16_t sign_extended_pc_offset_11 = sign_extension(instruction & 0x7FF, 11);
+                    /* Add the sign extend PC offset to PC */
+                    registers[R_PC] += sign_extended_pc_offset_11;
+                }
+                else {
+                    /* JSRR: Subroutine address is obtained from the base register. Bits [8:6] */
+                    uint16_t r0 = (instruction >> 6) & 0x7
+                    registers[R_PC] = registers[r0];
                 }
                 break;
             case OP_LD:
+                /*  
+                    Load 
+                        Address is computed by sign extending the 9 bit PC offset and adding to the PC
+                        Contents of the resulting memory address loaded into the destination register
+                    Opcode: 0010
+
+                    [15:12]: opcode
+                    [11:9]: Destination register
+                    [8:0]: 9 bit PC offset
+                */
+                /* Retrieve the destination register */
+                uint16_t r0 = (instruction >> 9) & 0x7;
+                /* Isolate the 9 bit PC offset by bitwise AND using bit mask 0000 0001 1111 1111 or 0x1FF*/
+                uint16_t sign_extended_pc_offset_9 = sign_extension(instruction & 0x1FF, 9);
+                registers[r0] = mem_read(registers[R_PC] + sign_extended_pc_offset_9);
+                update_condition_flags(r0);
                 break;
             case OP_LDI:
                 break;
