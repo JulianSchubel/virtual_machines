@@ -28,26 +28,9 @@
 #include "./include/utilities/memory_access.h"
 #include "./include/utilities/terminal_io.h"
 #include "./include/utilities/sign_extension.h"
+#include "./include/utilities/update_condition_flags.h"
 
 #define PROGRAM_START 0x3000
-
-/* Whenever a value is written to a register, we need to update the condition flag to indicate its sign.  */
-void update_condition_flags(uint16_t r)
-{
-    if(registers[r] == 0)
-    {
-        registers[R_COND] = FL_ZER;
-    }
-    /* if sign bit is 1  */
-    else if (registers[r] >> 15) 
-    {
-        registers[R_COND] = FL_NEG;
-    }
-    else
-    {
-        registers[R_COND] = FL_POS;
-    }
-}
 
 int main(int argc, char** argv)
 {
