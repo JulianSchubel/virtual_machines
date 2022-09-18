@@ -436,7 +436,7 @@ int main(int argc, char** argv)
                 {
                     uint16_t r0 = (instruction >> 9) & 0x7;
                     uint16_t sign_extended_pc_offset_9 = sign_extension(instruction & 0x1FF, 9);
-                    memory_write(registers[R_PC] + sign_extended_pc_offset_9);
+                    memory_write(registers[R_PC] + sign_extended_pc_offset_9, registers[r0]);
                 }
                 break;
 
