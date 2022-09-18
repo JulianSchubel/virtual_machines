@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-Wall
+CFLAGS=-Wall -Wextra --pedantic
 BINARIES=main
 
 all : ${BINARIES}

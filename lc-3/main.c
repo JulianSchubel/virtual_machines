@@ -47,7 +47,6 @@ int main(int argc, char** argv)
     {
         for( int i = 1; i < argc; ++i )
         {
-            /* see include/utilities/read_image.c  */
             if( !read_image(argv[i]) )    
             {
                 printf("Failed to load image: %s\n", argv[i]);
@@ -86,27 +85,27 @@ int main(int argc, char** argv)
             /* Execute */
             /* Register bit mask: 111 or 0x7 */
             case OP_ADD:
-                {
-                    /* Mode flag: Memory addressing mode */
-                    /* 
-                        Opcode: 0001
+                /* Mode flag: Memory addressing mode */
+                /* 
+                    Opcode: 0001
 
-                        Bits [15:12]: (leftmost bits): store the opcode.
-                        Bits [11:9]: store DR (Destination Register).
-                        Bits [8:6]:    store SR1 (Source Register 1).     
-                        Bits [5]: Mode flag (1 immediate mode, 0 register mode).
+                    Bits [15:12]: (leftmost bits): store the opcode.
+                    Bits [11:9]: store DR (Destination Register).
+                    Bits [8:6]:    store SR1 (Source Register 1).     
+                    Bits [5]: Mode flag (1 immediate mode, 0 register mode).
+                    
+                    If register mode (bit 5 = 0):
+                    Bits [4:3]: Unused.
+                    Bits [2:0]:    store SR2 (Source Register 2).
                         
-                        If register mode (bit 5 = 0):
-                        Bits [4:3]: Unused.
-                        Bits [2:0]:    store SR2 (Source Register 2).
-                            
-                        If immediate mode (bit 5 = 1):
-                        Bits [4:0]: imm5 field (5 bit value to be sign extended).
+                    If immediate mode (bit 5 = 1):
+                    Bits [4:0]: imm5 field (5 bit value to be sign extended).
 
-                        r0 = DR 
-                        r1 = SR1
-                        r2 = SR2
-                    */
+                    r0 = DR 
+                    r1 = SR1
+                    r2 = SR2
+                */
+                {
 
                     /* Isolate destination register */
                     uint16_t r0 = (instruction >> 9) & 0x7; 
