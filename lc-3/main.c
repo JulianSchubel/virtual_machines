@@ -21,38 +21,14 @@
 #include "./include/condition_flags.h"
 
 /* Utility functions */
-#include "./include/utilities/usage.c"
-#include "./include/utilities/switch_endian.c"
-#include "./include/utilities/read_image_file.c"
+#include "./include/utilities/usage.h"
+#include "./include/utilities/switch_endian.h"
+#include "./include/utilities/read_image_file.h"
 #include "./include/utilities/check_key.h"
 #include "./include/utilities/memory_access.h"
+#include "./include/utilities/terminal_io.h"
 
 #define PROGRAM_START 0x3000
-
-//Set up terminal input
-struct termios original_tio;
-
-void disable_input_buffering()
-{
-    tcgetattr(STDIN_FILENO, &original_tio);
-    struct termios new_tio = original_tio;
-    new_tio.c_lflag &= ~ICANON & ~ECHO;
-    tcsetattr(STDIN_FILENO, TCSANOW, &new_tio);
-}
-
-/* Restore terminal settings */
-void restore_input_buffering()
-{
-    tcsetattr(STDIN_FILENO, TCSANOW, &original_tio);
-}
-
-//Interrupt handling: Call restore_input_buffering on interrupt
-void handle_interrupt(int signal)
-{
-    restore_input_buffering();
-    printf("\n");
-    exit(-2);
-}
 
 /* Whenever a value is written to a register, we need to update the condition flag to indicate its sign.  */
 void update_condition_flags(uint16_t r)

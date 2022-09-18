@@ -3,7 +3,7 @@
 
 #include <stdio.h>
 #include <stdint.h>
-#include "switch_endian.c"
+#include "switch_endian.h"
 #include "../main_memory.h"
 
 /*NOTE: LC3 is a big endian system*/
