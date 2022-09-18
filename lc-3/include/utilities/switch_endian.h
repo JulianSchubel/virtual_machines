@@ -10,7 +10,6 @@
 */
 uint16_t switch_endian(uint16_t x)
 {
-	/* General algorithm for unsigned integers: x << (bit_size/2) | x >> (bit_size/2) */
 	return ( x << 8 | x >> 8 );
 }
 
