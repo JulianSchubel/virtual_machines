@@ -14,7 +14,7 @@ void memory_write(uint16_t address, uint16_t value) {
 
 uint16_t memory_read(uint16_t address) {
     /* If we are checking whether a key was pressed on the keyboard */
-    if(address = MMR_KBSR) {
+    if((address = MMR_KBSR)) {
         /* Check if file descriptor STDIN_FILENO is ready for readfs operation */
         if(check_key()) {
             /* Set the ready bit [15] to 1 */
