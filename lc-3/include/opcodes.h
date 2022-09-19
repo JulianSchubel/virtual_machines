@@ -9,7 +9,7 @@ enum
 	OP_ADD,		//add
 	OP_LD,		//load
 	OP_ST,		//store
-	OP_JSR,		//jump register
+	OP_JSR,		//jump to subroutine
 	OP_AND,		//bitwise and
 	OP_LDR,		//load register
 	OP_STR,		//store register

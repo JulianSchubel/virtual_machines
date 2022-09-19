@@ -34,8 +34,6 @@
 
 int main(int argc, char** argv)
 {
-    signal(SIGINT, handle_interrupt);
-    disable_input_buffering();
     /* check if there are at least two command line arguments  */
     if(argc < 2)
     {    
@@ -54,6 +52,10 @@ int main(int argc, char** argv)
             }
         }    
     }
+    /* Setup signal handler: Need terminal configuration to be reset on signal interrupt */
+    signal(SIGINT, handle_interrupt);
+    /* Alter input buffering */
+    disable_input_buffering();
 
     /* Exactly one condition flag must be set at all times */
     registers[R_COND] = FL_ZER;    
@@ -74,12 +76,7 @@ int main(int argc, char** argv)
         /* Right shift to isolate the opcode; opcode is leftmost 4 bits */
         uint16_t opcode = instruction >> 12;
 
-        /*  Identify the opcode and determine instruction operator and operands.
-             - Instructions are 16-bits wide.
-             - Instruction have both an opcode and parameters.
-             - OPCODE: Type of operation to be performed.
-             - PARAMATERS: Inputs to the operation.
-        */
+        /*  Identify the opcode and determine instruction operator and operands. Instructions are 16-bits wide */
         switch(opcode)
         {
             /* Execute */
@@ -268,9 +265,13 @@ int main(int argc, char** argv)
 
             case OP_LD:
                 /*  
-                    Load 
+                    Load: 
                         Address is computed by sign extending the 9 bit PC offset and adding to the PC
                         Contents of the resulting memory address loaded into the destination register
+                        Limited to address offsets of 9 bits, i.e. "nearer" addresses
+
+                        **Essentially functions like loading a non-register variable 
+
                     Opcode: 0010
 
                     [15:12]: opcode
@@ -288,13 +289,91 @@ int main(int argc, char** argv)
                 break;
 
             case OP_LDI:
+                /*  
+                    Load Indirect:
+                        Address computed by sign extending the 9 bit PC offset and adding to the PC
+                        Contents of the resulting memory address is the memory address of the data to be loaded into the DR
+                        Allows for address offsets of 16 bits by storing the location holding the address in a "nearer" 9 bit address.
+
+                        **Essentially functions like dereferencing a pointer variable.
+
+                    Opcode: 1010
+
+                    [15:12]: opcode
+                    [11:9]: Destination Register
+                    [8:0]: 9 bit PC offset
+                */
+                {
+                    uint16_t r0 = (instruction >> 9) & 0x7;
+                    uint16_t sign_extended_pc_offset_9 = sign_extension(instruction & 0x1FF, 9);
+                    registers[r0] = memory_read(memory_read(registers[R_PC] + sign_extended_pc_offset_9));
+                    update_condition_flags(r0);
+                }
                 break;
+
             case OP_LDR:
+                /*  
+                    Load Register:
+                        Load from base register + offset
+                        Address computed by sign-extending bits [5:0] and adding this value to the contents of the base register specified in bits [8:6]
+                        Contents of the resulting address loaded into the DR specified at bits [11:9]
+
+                    Opcode: 0110
+
+                    [15:12]: opcode
+                    [11:9]: Destination register
+                    [8:6]: Base register
+                    [5:0] 6 bit offset
+                */
+                {
+                    uint16_t r0 = (instruction >> 9) & 0x7;
+                    uint16_t r1 = (instruction >> 6) & 0x7;
+                    uint16_t sign_extended_br_offset_6 = sign_extension(instruction & 0x3F, 6);
+                    registers[r0] = memory_read(registers[r1] + sign_extended_br_offset_6);
+                    update_condition_flags(r0);
+                }
                 break;
+
             case OP_LEA:
+                /*  
+                    Load Effective Address:
+                        Load an address into a register
+                        Address computed by sign-extending bits [8:0] and adding this to the PC.
+                        The resulting address is loaded into the DR
+
+                    Opcode: 1110
+
+                    [15:12]: opcode
+                    [11:9]: Destination register
+                    [8:0]: 9 bit PC offset
+                */
+                {
+                    uint16_t r0 = (instruction >> 9) & 0x7;
+                    uint16_t sign_extended_pc_offset_9 = sign_extension(instruction & 0x1FF, 9);
+                    registers[r0] = registers[R_PC] + sign_extended_pc_offset_9;
+                    update_condition_flags(r0);
+                }
                 break;
+
             case OP_ST:
+                /*  
+                    Store:
+                        Store the contents of a register in a memory location
+                        The contents of the source register are stored in the memory location computed by sign extending bit [8:0] and adding the result to PC
+
+                    Opcode: 0011
+
+                    [15:12]:
+                    [11:9]: Source register
+                    [8:0]: 9 bit PC offset
+                */
+                {
+                    uint16_t r0 = (instruction >> 9) & 0x7;
+                    uint16_t sign_extended_pc_offset_9 = sign_extension(instruction & 0x1FF, 9);
+                    memory_write(registers[R_PC] + sign_extended_pc_offset_9, registers[r0]);
+                }
                 break;
+
             case OP_STI:
                 break;
             case OP_STR:
@@ -306,7 +385,8 @@ int main(int argc, char** argv)
             case OP_RTI:
                 break;
             default: 
-                /* bad opcode */
+                printf("Bad opcode, Aborting...\n");
+                abort();
                 break;
         }
     }
